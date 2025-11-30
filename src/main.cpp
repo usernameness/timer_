@@ -3,23 +3,19 @@
 #include <RTClib.h>
 #include <Adafruit_SSD1306.h>
 
+#include "../include/buzzer.hpp"
+#include "../include/encoder.hpp"
+#include "../include/display.hpp"
+#include "../include/clock.hpp"
+#include "../include/control.hpp"
 
-// --- Pin definitions ---
-#define SDA_PIN 6
-#define SCL_PIN 5
-#define ENC_A   9
-#define ENC_B   10
-#define ENC_SW  4
+
 #define LED_PIN 8
 
-// OLED Display Defines
-#define SCREEN_WIDTH 128 
-#define SCREEN_HEIGHT 64
-#define OLED_ADDR   0x3C
 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-
-RTC_DS3231 rtc;
+encoder encoder_;
+RTC clock_;
+buzzer buzzer_;
 
 void setup() {
 
@@ -27,16 +23,6 @@ void setup() {
 
   pinMode(LED_PIN, OUTPUT);
   Wire.begin(SDA_PIN, SCL_PIN);
-
-  if(!rtc.begin()) {
-    Serial.println(F("Couldn't find RTC"));
-    for(;;); // Halt if deiplay not found
-  }
-
-  if(rtc.lostPower()) {
-    Serial.println(F("RTC lost power, setting the time!"));
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-  }
 
   if(!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
     Serial.println(F("SSD1306 allocation failed"));
@@ -49,6 +35,10 @@ void setup() {
   display.setCursor(0,0);
   display.println("Hello, World!"); 
   display.display();
+
+  clock_.init();
+  buzzer_.init();
+  encoder_.init(buzzer_.buzzerTaskHandle);
 }
 
 void loop() {
@@ -57,7 +47,7 @@ void loop() {
   digitalWrite(LED_PIN, LOW);    
   delay(500);
   
-  DateTime now = rtc.now();
+  DateTime now = clock_.now();
 
   // Clear screen before drawing
   display.clearDisplay();
@@ -81,6 +71,12 @@ void loop() {
   display.print(now.month());
   display.print("/");
   display.print(now.year());
+
+
+  display.setTextSize(1);
+  display.setCursor(0, 50);
+  display.print("Encoder Pos: ");
+  display.print(encoder_.get_position());
 
   display.display();
 }
