@@ -9,12 +9,6 @@ void RTC::init() {
 
     mutex_ = xSemaphoreCreateMutex();
 
-    // Interrupt Service Routine for SQW pin is used to update time every second
-    // as it is more accurate than relying on task delays and reading the RTC periodically
-    // and lowers I2C bus usage
-    pinMode(SQW_PIN, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(SQW_PIN), handleSQWInterrupt, RISING);
-
     // Create a task to periodically update the current time from RTC to avoid drift
     xTaskCreate(RTC::execute, "Clock Task", 2048, NULL, 1, NULL);
 
@@ -33,7 +27,6 @@ void RTC::init() {
         rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
     }
 
-    rtc.writeSqwPinMode(DS3231_SquareWave1Hz);
 
     // Initial time read
     xSemaphoreTake(mutex_, portMAX_DELAY);
@@ -47,14 +40,8 @@ void RTC::execute(void *pvParameters) {
         xSemaphoreTake(mutex_, portMAX_DELAY);
         now_ = t;
         xSemaphoreGive(mutex_);
-        delay(60000);
+        delay(50);
     }
-}
-
-void RTC::handleSQWInterrupt() {
-    portENTER_CRITICAL_ISR(&RTC::mux_);
-    now_ = now_ + TimeSpan(0, 0, 0, 1);
-    portEXIT_CRITICAL_ISR(&RTC::mux_);
 }
 
 auto RTC::now() -> const DateTime {
