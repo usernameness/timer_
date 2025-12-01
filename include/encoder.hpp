@@ -32,4 +32,6 @@ private:
     static volatile bool switchPressed;
     static TaskHandle_t buzzerTaskHandle;
     static TaskHandle_t displayTaskHandle;
+    static SemaphoreHandle_t mutex_;
+    static portMUX_TYPE mux_;
 };

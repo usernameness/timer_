@@ -8,7 +8,7 @@
 
 #define SDA_PIN 6
 #define SCL_PIN 5
-#define SQW_PIN 3
+#define SQW_PIN 7
 
 class RTC {
 
@@ -23,6 +23,7 @@ private:
     void reset();
 
     static RTC_DS3231 rtc;
-
     static DateTime now_;
+    static SemaphoreHandle_t mutex_;
+    static portMUX_TYPE mux_;
 };

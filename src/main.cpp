@@ -24,10 +24,11 @@ void setup() {
 
   Wire.begin(SDA_PIN, SCL_PIN);
 
-  display_.init(encoder_, clock_);
   clock_.init();
   buzzer_.init();
   encoder_.init(buzzer_.buzzerTaskHandle, display_.displayTaskHandle);
+  display_.init(encoder_, clock_);
+
 }
 
 void loop() {

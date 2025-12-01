@@ -35,7 +35,6 @@ void display::execute(void *pvParameters) {
         // Clear screen before drawing
         display_.clearDisplay();
 
-        /*
         // Print time
         display_.setCursor(0, 0);
         display_.setTextSize(2);
@@ -60,17 +59,7 @@ void display::execute(void *pvParameters) {
         display_.setTextSize(1);
         display_.setCursor(0, 50);
         display_.print("Encoder Pos: ");
-        //display_.print(encoderRef_->get_position());
-
-        */
-
-        static uint32_t x = 0;
-        x++;
-        
-        display_.setTextSize(1);
-        display_.setCursor(0, 0);
-        display_.print("Ticks: ");
-        display_.print(x);
+        display_.print(encoderRef_->get_position());
 
         display_.display();
 

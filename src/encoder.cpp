@@ -7,6 +7,11 @@ volatile bool encoder::switchPressed = false;
 TaskHandle_t encoder::buzzerTaskHandle = nullptr;
 TaskHandle_t encoder::displayTaskHandle = nullptr;
 
+// Mutex for task-level protection
+SemaphoreHandle_t encoder::mutex_ = nullptr;
+// Spinlock for ISR protection
+portMUX_TYPE encoder::mux_ = portMUX_INITIALIZER_UNLOCKED;
+
 void encoder::init(TaskHandle_t buzzerHandle, TaskHandle_t displayHandle) {
 
     buzzerTaskHandle = buzzerHandle;
@@ -20,6 +25,8 @@ void encoder::init(TaskHandle_t buzzerHandle, TaskHandle_t displayHandle) {
     encoderPos = 0;
     switchPressed = false;
 
+    mutex_ = xSemaphoreCreateMutex();
+
     attachInterrupt(digitalPinToInterrupt(ENC_CLK), handleEncoder, CHANGE);
     attachInterrupt(digitalPinToInterrupt(ENC_DT), handleEncoder, CHANGE);
     attachInterrupt(digitalPinToInterrupt(ENC_SW), handleSwitch, FALLING);
@@ -30,20 +37,35 @@ void encoder::execute() {
 }
 
 void encoder::reset() {
+    xSemaphoreTake(mutex_, portMAX_DELAY);
     encoderPos = 0;
     switchPressed = false;
+    xSemaphoreGive(mutex_);
 }
 
 auto encoder::get_position() -> const int {
-    return encoderPos;
+    int pos;
+    xSemaphoreTake(mutex_, portMAX_DELAY);
+    pos = encoderPos;
+    xSemaphoreGive(mutex_);
+    return pos;
 }
 
 auto encoder::get_cursor_position() -> const int {
-    return encoderPos % 4;
+    int pos;
+    xSemaphoreTake(mutex_, portMAX_DELAY);
+    pos = encoderPos;
+    xSemaphoreGive(mutex_);
+    return pos % 4;
 }
 
 auto encoder::is_switch_pressed() -> const bool {
-    return switchPressed;
+    bool pressed;
+    xSemaphoreTake(mutex_, portMAX_DELAY);
+    pressed = switchPressed;
+    switchPressed = false; // clear after read if desired
+    xSemaphoreGive(mutex_);
+    return pressed;
 }
 
 void IRAM_ATTR encoder::handleEncoder() {
@@ -51,11 +73,13 @@ void IRAM_ATTR encoder::handleEncoder() {
     int currentDTState  = digitalRead(ENC_DT);
 
     if (currentCLKState != lastCLKState && currentCLKState == HIGH) {
+        portENTER_CRITICAL_ISR(&mux_);
         if (currentDTState != currentCLKState) {
             encoderPos++;
         } else {
             encoderPos--;
         }
+        portEXIT_CRITICAL_ISR(&mux_);
 
         // Notify buzzer: encoder moved
         if (buzzerTaskHandle != nullptr) {
@@ -82,7 +106,9 @@ void IRAM_ATTR encoder::handleSwitch() {
     }
     lastPressTick = nowTick;
 
+    portENTER_CRITICAL_ISR(&mux_);
     switchPressed = true;
+    portEXIT_CRITICAL_ISR(&mux_);
 
     // Notify buzzer: button pressed
     if (buzzerTaskHandle != nullptr) {

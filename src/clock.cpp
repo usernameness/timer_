@@ -2,8 +2,12 @@
 
 RTC_DS3231 RTC::rtc = RTC_DS3231();
 DateTime RTC::now_ = DateTime();
+SemaphoreHandle_t RTC::mutex_ = nullptr;
+portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
 void RTC::init() {
+
+    mutex_ = xSemaphoreCreateMutex();
 
     // Interrupt Service Routine for SQW pin is used to update time every second
     // as it is more accurate than relying on task delays and reading the RTC periodically
@@ -29,21 +33,36 @@ void RTC::init() {
         rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
     }
 
+    rtc.writeSqwPinMode(DS3231_SquareWave1Hz);
+
+    // Initial time read
+    xSemaphoreTake(mutex_, portMAX_DELAY);
     now_ = rtc.now();
+    xSemaphoreGive(mutex_);
 }
 
 void RTC::execute(void *pvParameters) {
-
-    now_ = rtc.now();
-    delay(60000);
+    for(;;){
+        DateTime t = rtc.now();
+        xSemaphoreTake(mutex_, portMAX_DELAY);
+        now_ = t;
+        xSemaphoreGive(mutex_);
+        delay(60000);
+    }
 }
 
 void RTC::handleSQWInterrupt() {
+    portENTER_CRITICAL_ISR(&RTC::mux_);
     now_ = now_ + TimeSpan(0, 0, 0, 1);
+    portEXIT_CRITICAL_ISR(&RTC::mux_);
 }
 
 auto RTC::now() -> const DateTime {
-    return now_;
+    DateTime copy;
+    xSemaphoreTake(mutex_, portMAX_DELAY);
+    copy = now_;
+    xSemaphoreGive(mutex_);
+    return copy;
 }
 
 void RTC::reset() {
