@@ -30,42 +30,47 @@ void display::init(encoder &encoderRef, RTC &clockRef) {
 void display::execute(void *pvParameters) {
     for (;;) {
 
-        DateTime now = clockRef_->now();
+DateTime now = clockRef_->now();
+int cursorPos = encoderRef_->get_cursor_position();
 
-        // Clear screen before drawing
-        display_.clearDisplay();
+// Format time string
+char timeStr[9]; // "HH:MM:SS"
+snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d",
+         now.hour(), now.minute(), now.second());
 
-        // Print time
-        display_.setCursor(0, 0);
-        display_.setTextSize(2);
-        display_.print(now.hour());
-        display_.print(":");
-        if (now.minute() < 10) display_.print("0");
-        display_.print(now.minute());
-        display_.print(":");
-        if (now.second() < 10) display_.print("0");
-        display_.print(now.second());
+// Clear screen
+display_.clearDisplay();
+display_.setTextSize(1);   // Small text so four lines fit
+display_.setTextColor(SSD1306_WHITE);
 
-        // Print date
-        display_.setTextSize(1);
-        display_.setCursor(0, 30);
-        display_.print(now.day());
-        display_.print("/");
-        display_.print(now.month());
-        display_.print("/");
-        display_.print(now.year());
+// Each character in size=1 is ~6 pixels wide, 8 pixels tall
+int charWidth = 6;
+int charHeight = 8;
+int textWidth = strlen(timeStr) * charWidth;
+int textHeight = charHeight;
+int xPos = (SCREEN_WIDTH - textWidth) / 2; // Center horizontally
+
+// Line Y positions
+int lineY[4] = {2, 18, 34, 50};
+
+// Draw four centered lines
+for (int i = 0; i < 4; i++) {
+    int yPos = lineY[i];
+
+    // If this line is the cursor position, draw rectangle
+    if (cursorPos == (i)) {
+        display_.drawRect(xPos - 2, yPos - 2, textWidth + 4, textHeight + 4, SSD1306_WHITE);
+    }
+
+    display_.setCursor(xPos, yPos);
+    display_.print(timeStr);
+}
+
+display_.display();
 
 
-        display_.setTextSize(1);
-        display_.setCursor(0, 50);
-        display_.print("Encoder Pos: ");
-        display_.print(encoderRef_->get_position());
 
-        display_.display();
-
-
-
-        vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second
+        vTaskDelay(pdMS_TO_TICKS(50)); // Update every second
     }
 }
 
