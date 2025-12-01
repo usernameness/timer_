@@ -11,7 +11,7 @@
 class encoder {
 public:
 
-    void init(TaskHandle_t buzzerHandle);
+    void init(TaskHandle_t buzzerHandle, TaskHandle_t displayHandle);
 
 
     [[nodiscard]] auto get_position() -> const int;
@@ -31,4 +31,5 @@ private:
     static volatile int encoderPos;
     static volatile bool switchPressed;
     static TaskHandle_t buzzerTaskHandle;
+    static TaskHandle_t displayTaskHandle;
 };

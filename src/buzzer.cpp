@@ -5,7 +5,7 @@ TaskHandle_t buzzer::buzzerTaskHandle = nullptr;
 void buzzer::init() {
     pinMode(BUZZER_PIN, OUTPUT);
 
-    xTaskCreate(buzzer::execute, "BuzzerTask", 2048, NULL, 3, &buzzerTaskHandle);
+    xTaskCreate(buzzer::execute, "BuzzerTask", 2048, NULL, 1, &buzzerTaskHandle);
 }
 
 void buzzer::execute(void *pvParameters) {
@@ -39,6 +39,7 @@ void buzzer::execute(void *pvParameters) {
                 }
             }
         }
+
     }
 }
 

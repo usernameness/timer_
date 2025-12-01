@@ -5,10 +5,12 @@ volatile int encoder::encoderPos = 0;
 volatile int encoder::lastCLKState = 0;
 volatile bool encoder::switchPressed = false;
 TaskHandle_t encoder::buzzerTaskHandle = nullptr;
+TaskHandle_t encoder::displayTaskHandle = nullptr;
 
-void encoder::init(TaskHandle_t buzzerHandle) {
+void encoder::init(TaskHandle_t buzzerHandle, TaskHandle_t displayHandle) {
 
     buzzerTaskHandle = buzzerHandle;
+    displayTaskHandle = displayHandle;
 
     pinMode(ENC_CLK, INPUT_PULLUP);
     pinMode(ENC_DT, INPUT_PULLUP);
