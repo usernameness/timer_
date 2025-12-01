@@ -3,20 +3,32 @@
 #include <Arduino.h>
 #include <cstdint>
 #include <functional>
+#include <Adafruit_SSD1306.h>
+#include "../include/encoder.hpp"
+#include "../include/clock.hpp"
+
 
 // OLED Display Defines
 #define SCREEN_WIDTH 128 
 #define SCREEN_HEIGHT 64
 #define OLED_ADDR   0x3C
 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 class display {
 public:
 
-    void init();
-    
+    void init(encoder &encoderRef, RTC &clockRef);
+
+    static TaskHandle_t displayTaskHandle;
 
 private:
+    static void execute(void *pvParameters);
+    void reset();
+
+    static encoder* encoderRef_;
+
+    static RTC* clockRef_;
+
+    static Adafruit_SSD1306 display_;
 
 };
