@@ -8,7 +8,8 @@
 
 #define SDA_PIN 6
 #define SCL_PIN 5
-#define SQW_PIN 7
+#define LED_PIN 8
+
 
 class RTC {
 
@@ -19,7 +20,6 @@ public:
 private:
 
     static void execute(void *pvParameters);
-    static void handleSQWInterrupt();
     void reset();
 
     static RTC_DS3231 rtc;
