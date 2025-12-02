@@ -6,6 +6,7 @@
 #include <Adafruit_SSD1306.h>
 #include "../include/encoder.hpp"
 #include "../include/clock.hpp"
+#include "../include/control.hpp"
 
 
 // OLED Display Defines
@@ -17,7 +18,7 @@
 class display {
 public:
 
-    void init(encoder &encoderRef, RTC &clockRef);
+    void init(encoder &encoderRef, control &controlRef);
 
     static TaskHandle_t displayTaskHandle;
 
@@ -26,8 +27,7 @@ private:
     void reset();
 
     static encoder* encoderRef_;
-
-    static RTC* clockRef_;
+    static control* controlRef_;
 
     static Adafruit_SSD1306 display_;
 

@@ -17,6 +17,7 @@ encoder encoder_;
 RTC clock_;
 buzzer buzzer_;
 display display_;
+control control_;
 
 void setup() {
 
@@ -27,13 +28,15 @@ void setup() {
   clock_.init();
   buzzer_.init();
   encoder_.init(buzzer_.buzzerTaskHandle, display_.displayTaskHandle);
-  display_.init(encoder_, clock_);
+  
+  control_.init(encoder_, clock_); 
+  display_.init(encoder_, control_);
 
 }
 
 void loop() {
-  digitalWrite(LED_PIN, HIGH); 
+  GPIO.out_w1ts.val = (1 << 8);  // Set LED_PIN high for debugging
   delay(500);                   
-  digitalWrite(LED_PIN, LOW);    
+  GPIO.out_w1tc.val = (1 << 8);  // Clear LED_PIN high after encoder move
   delay(500);
 }
