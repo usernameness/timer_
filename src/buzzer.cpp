@@ -44,23 +44,25 @@ void buzzer::execute(void *pvParameters) {
 }
 
 void buzzer::shortBurst() {
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(3);
-    digitalWrite(BUZZER_PIN, LOW);
+    // Set pin HIGH
+    GPIO.out_w1ts.val = (1 << BUZZER_PIN);
+    vTaskDelay(pdMS_TO_TICKS(3));
+    // Set pin LOW
+    GPIO.out_w1tc.val = (1 << BUZZER_PIN);
 }
 
 void buzzer::smallBeep() {
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(10);
-    digitalWrite(BUZZER_PIN, LOW);
+    GPIO.out_w1ts.val = (1 << BUZZER_PIN);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    GPIO.out_w1tc.val = (1 << BUZZER_PIN);
 }
 
 void buzzer::alarmBeeps() {
     for (int i = 0; i < 3; ++i) {
-        digitalWrite(BUZZER_PIN, HIGH);
-        delay(300);
-        digitalWrite(BUZZER_PIN, LOW);
-        delay(300);
+        GPIO.out_w1ts.val = (1 << BUZZER_PIN);
+        vTaskDelay(pdMS_TO_TICKS(300));
+        GPIO.out_w1tc.val = (1 << BUZZER_PIN);
+        vTaskDelay(pdMS_TO_TICKS(300));
     }
-    delay(1000); // Pause between alarm beeps
+    vTaskDelay(pdMS_TO_TICKS(1000)); // Pause between alarm beeps
 }

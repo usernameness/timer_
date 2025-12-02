@@ -28,7 +28,7 @@ void encoder::init(TaskHandle_t buzzerHandle, TaskHandle_t displayHandle) {
     mutex_ = xSemaphoreCreateMutex();
 
     attachInterrupt(digitalPinToInterrupt(ENC_CLK), handleEncoder, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(ENC_DT), handleEncoder, CHANGE);
+    //attachInterrupt(digitalPinToInterrupt(ENC_DT), handleEncoder, CHANGE);
     attachInterrupt(digitalPinToInterrupt(ENC_SW), handleSwitch, FALLING);
 }
 
@@ -69,8 +69,20 @@ auto encoder::is_switch_pressed() -> const bool {
 }
 
 void IRAM_ATTR encoder::handleEncoder() {
-    int currentCLKState = digitalRead(ENC_CLK);
-    int currentDTState  = digitalRead(ENC_DT);
+
+
+    static uint32_t lastInterruptTick = 0;
+    uint32_t nowTick = xTaskGetTickCountFromISR();
+    
+    // Debounce: ignore if less than 2 ms since last interrupt
+    if ((nowTick - lastInterruptTick) < pdMS_TO_TICKS(1)) {
+        return;
+    }
+    lastInterruptTick = nowTick;
+
+    // Direct GPIO register reads for ESP32-C3
+    int currentCLKState = (GPIO.in.val >> ENC_CLK) & 0x1;
+    int currentDTState  = (GPIO.in.val >> ENC_DT) & 0x1;
 
     if (currentCLKState != lastCLKState && currentCLKState == HIGH) {
         portENTER_CRITICAL_ISR(&mux_);
@@ -80,6 +92,7 @@ void IRAM_ATTR encoder::handleEncoder() {
             encoderPos--;
         }
         portEXIT_CRITICAL_ISR(&mux_);
+
 
         // Notify buzzer: encoder moved
         if (buzzerTaskHandle != nullptr) {
@@ -92,9 +105,24 @@ void IRAM_ATTR encoder::handleEncoder() {
                 portYIELD_FROM_ISR();
             }
         }
+
+        // Notify Display: encoder moved
+        if (displayTaskHandle != nullptr) {
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xTaskNotifyFromISR(displayTaskHandle,
+                               0,
+                               eSetValueWithOverwrite,
+                               &xHigherPriorityTaskWoken);
+            if (xHigherPriorityTaskWoken) {
+                portYIELD_FROM_ISR();
+            }
+        }
+
+
     }
 
     lastCLKState = currentCLKState;
+
 }
 
 void IRAM_ATTR encoder::handleSwitch() {

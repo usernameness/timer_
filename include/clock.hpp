@@ -8,7 +8,6 @@
 
 #define SDA_PIN 6
 #define SCL_PIN 5
-#define LED_PIN 8
 
 
 class RTC {
