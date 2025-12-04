@@ -2,17 +2,14 @@
 #include "../include/buzzer.hpp"
 #include "../include/display.hpp"
 #include "../include/encoder.hpp"
-#include "../include/buzzer.hpp"
+
 
 volatile int encoder::encoderPos = 0;
-volatile int encoder::lastCLKState = 0;
+volatile int encoder::lastState = 0;
 volatile bool encoder::switchPressed = false;
 TaskHandle_t encoder::buzzerTaskHandle = nullptr;
 TaskHandle_t encoder::displayTaskHandle = nullptr;
-
-// Mutex for task-level protection
 SemaphoreHandle_t encoder::mutex_ = nullptr;
-// Spinlock for ISR protection
 portMUX_TYPE encoder::mux_ = portMUX_INITIALIZER_UNLOCKED;
 
 //------------------------------------------------------------------------------------------------
@@ -25,7 +22,7 @@ void encoder::init(TaskHandle_t buzzerHandle, TaskHandle_t displayHandle) {
     pinMode(ENC_DT, INPUT_PULLUP);
     pinMode(ENC_SW, INPUT_PULLUP);
 
-    lastCLKState = digitalRead(ENC_CLK);
+    lastState = digitalRead(ENC_CLK);
     encoderPos = 0;
     switchPressed = false;
 
@@ -72,7 +69,7 @@ auto encoder::is_switch_pressed() -> const bool {
     bool pressed;
     xSemaphoreTake(mutex_, portMAX_DELAY);
     pressed = switchPressed;
-    switchPressed = false; // clear after read if desired
+    switchPressed = false;
     xSemaphoreGive(mutex_);
     return pressed;
 }
@@ -94,7 +91,7 @@ void IRAM_ATTR encoder::handleEncoder() {
     int currentCLKState = (GPIO.in.val >> ENC_CLK) & 0x1;
     int currentDTState  = (GPIO.in.val >> ENC_DT) & 0x1;
 
-    if (currentCLKState != lastCLKState && currentCLKState == HIGH) {
+    if (currentCLKState != lastState && currentCLKState == HIGH) {
         portENTER_CRITICAL_ISR(&mux_);
         if (currentDTState != currentCLKState) {
             encoderPos++;
@@ -120,7 +117,7 @@ void IRAM_ATTR encoder::handleEncoder() {
         if (displayTaskHandle != nullptr) {
             BaseType_t xHigherPriorityTaskWoken = pdFALSE;
             xTaskNotifyFromISR(displayTaskHandle,
-                               0,
+                               display::ENCODER_MOVE,
                                eSetValueWithOverwrite,
                                &xHigherPriorityTaskWoken);
             if (xHigherPriorityTaskWoken) {
@@ -131,7 +128,7 @@ void IRAM_ATTR encoder::handleEncoder() {
 
     }
 
-    lastCLKState = currentCLKState;
+    lastState = currentCLKState;
 
 }
 
@@ -140,24 +137,26 @@ void IRAM_ATTR encoder::handleSwitch() {
     static uint32_t lastPressTick = 0;
     uint32_t nowTick = xTaskGetTickCountFromISR();
 
-    if ((nowTick - lastPressTick) < pdMS_TO_TICKS(150)) {
+    if ((nowTick - lastPressTick) < pdMS_TO_TICKS(30)) {
         return;
     }
     lastPressTick = nowTick;
 
-    portENTER_CRITICAL_ISR(&mux_);
-    switchPressed = true;
-    portEXIT_CRITICAL_ISR(&mux_);
+    if (((GPIO.in.val >> ENC_SW) & 0x1) == LOW) {
+        portENTER_CRITICAL_ISR(&mux_);
+        switchPressed = true;
+        portEXIT_CRITICAL_ISR(&mux_);
 
-    // Notify buzzer: button pressed
-    if (buzzerTaskHandle != nullptr) {
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xTaskNotifyFromISR(buzzerTaskHandle,
-                           buzzer::BUTTON_PRESS,
-                           eSetValueWithOverwrite,
-                           &xHigherPriorityTaskWoken);
-        if (xHigherPriorityTaskWoken) {
-            portYIELD_FROM_ISR();
+        // Notify buzzer: button pressed
+        if (buzzerTaskHandle != nullptr) {
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            xTaskNotifyFromISR(buzzerTaskHandle,
+                             buzzer::BUTTON_PRESS,
+                             eSetValueWithOverwrite,
+                             &xHigherPriorityTaskWoken);
+            if (xHigherPriorityTaskWoken) {
+                portYIELD_FROM_ISR();
+            }
         }
     }
 }

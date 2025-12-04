@@ -32,11 +32,13 @@ void setup() {
   control_.init(encoder_, clock_); 
   display_.init(encoder_, control_);
 
+  digitalWrite(LED_PIN, HIGH);
+
 }
 
 void loop() {
-  GPIO.out_w1ts.val = (1 << 8);  // Set LED_PIN high for debugging
-  delay(500);                   
-  GPIO.out_w1tc.val = (1 << 8);  // Clear LED_PIN high after encoder move
-  delay(500);
+  //GPIO.out_w1ts.val = (1 << 8);  // Set LED_PIN high for debugging
+  //delay(500);                   
+  //GPIO.out_w1tc.val = (1 << 8);  // Clear LED_PIN high after encoder move
+  //delay(500);
 }

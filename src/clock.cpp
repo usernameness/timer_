@@ -10,9 +10,6 @@ void RTC::init() {
 
     mutex_ = xSemaphoreCreateMutex();
 
-    // Create a task to periodically update the current time from RTC to avoid drift
-    xTaskCreate(RTC::execute, "Clock Task", 2048, NULL, 1, NULL);
-
     if(!rtc.begin()) {
         
         //Notify if RTC is not found - TODO: Handle error appropriately
@@ -28,11 +25,13 @@ void RTC::init() {
         rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
     }
 
-
     // Initial time read
     xSemaphoreTake(mutex_, portMAX_DELAY);
     now_ = rtc.now();
     xSemaphoreGive(mutex_);
+
+    // Create a task to periodically update the current time from RTC to avoid drift
+    xTaskCreate(RTC::execute, "Clock Task", 2048, NULL, 1, NULL);
 }
 
 //------------------------------------------------------------------------------------------------

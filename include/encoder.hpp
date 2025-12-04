@@ -31,7 +31,7 @@ private:
     static void IRAM_ATTR handleSwitch();
 
 
-    static volatile int lastCLKState;
+    static volatile int lastState;
     static volatile int encoderPos;
     static volatile bool switchPressed;
     static TaskHandle_t buzzerTaskHandle;

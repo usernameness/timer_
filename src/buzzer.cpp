@@ -2,12 +2,14 @@
 
 TaskHandle_t buzzer::buzzerTaskHandle = nullptr;
 
+//------------------------------------------------------------------------------------------------
 void buzzer::init() {
     pinMode(BUZZER_PIN, OUTPUT);
 
     xTaskCreate(buzzer::execute, "BuzzerTask", 2048, NULL, 1, &buzzerTaskHandle);
 }
 
+//------------------------------------------------------------------------------------------------
 void buzzer::execute(void *pvParameters) {
     uint32_t notificationValue;
     bool alarmActive = false;
@@ -43,6 +45,7 @@ void buzzer::execute(void *pvParameters) {
     }
 }
 
+//------------------------------------------------------------------------------------------------
 void buzzer::shortBurst() {
     // Set pin HIGH
     GPIO.out_w1ts.val = (1 << BUZZER_PIN);
@@ -51,18 +54,20 @@ void buzzer::shortBurst() {
     GPIO.out_w1tc.val = (1 << BUZZER_PIN);
 }
 
+//------------------------------------------------------------------------------------------------
 void buzzer::smallBeep() {
     GPIO.out_w1ts.val = (1 << BUZZER_PIN);
     vTaskDelay(pdMS_TO_TICKS(10));
     GPIO.out_w1tc.val = (1 << BUZZER_PIN);
 }
 
+//------------------------------------------------------------------------------------------------
 void buzzer::alarmBeeps() {
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 2; ++i) {
         GPIO.out_w1ts.val = (1 << BUZZER_PIN);
-        vTaskDelay(pdMS_TO_TICKS(300));
+        vTaskDelay(pdMS_TO_TICKS(100));
         GPIO.out_w1tc.val = (1 << BUZZER_PIN);
-        vTaskDelay(pdMS_TO_TICKS(300));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
-    vTaskDelay(pdMS_TO_TICKS(1000)); // Pause between alarm beeps
+    vTaskDelay(pdMS_TO_TICKS(800)); // Pause between alarm beeps
 }

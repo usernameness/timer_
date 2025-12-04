@@ -1,3 +1,4 @@
+// Include concrete headers required by this translation unit
 #include "../include/display.hpp"
 #include "../include/encoder.hpp"
 #include "../include/control.hpp"
@@ -32,37 +33,63 @@ void display::init(encoder &encoderRef, control &controlRef) {
 
 //------------------------------------------------------------------------------------------------
 void display::execute(void *pvParameters) {
+    uint32_t notificationValue;
+    int cursorPosAtSelction = 0;
+    bool selectionActive = false;
+
+
     for (;;) {
 
-        xTaskNotifyWait(0, 0, NULL, pdMS_TO_TICKS(50));
+        xTaskNotifyWait(0, UINT32_MAX, &notificationValue, pdMS_TO_TICKS(50));
 
-
-        DateTime now = controlRef_->get_timers()[1]; // For now, just show the first timer
+        std::array<DateTime,4> now = controlRef_->get_timers(); // For now, just show the first timer
         int cursorPos = encoderRef_->get_cursor_position();
 
-        // Format time string
-        char timeStr[9]; // "HH:MM:SS"
-        snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d",
-                 now.hour(), now.minute(), now.second());
+        if(notificationValue == ENCODER_MOVE) {
+            // Handle encoder move if needed
+        } else if (notificationValue == SELECTION) {
+            cursorPosAtSelction = cursorPos;
+            selectionActive = true;
+
+        } else if (notificationValue == UNSELECTION) {
+            // Handle unselection if needed
+            selectionActive = false;
+            cursorPosAtSelction = 0;
+        }
+
+        if (selectionActive) {
+            cursorPos = cursorPosAtSelction;
+        }
 
         // Clear screen
         display_.clearDisplay();
         display_.setTextSize(1);   // Small text so four lines fit
         display_.setTextColor(SSD1306_WHITE);
 
-        // Each character in size=1 is ~6 pixels wide, 8 pixels tall
-        int charWidth = 6;
-        int charHeight = 8;
-        int textWidth = strlen(timeStr) * charWidth;
-        int textHeight = charHeight;
-        int xPos = (SCREEN_WIDTH - textWidth) / 2; // Center horizontally
+       
 
         // Line Y positions
         int lineY[4] = {2, 18, 34, 50};
 
+        //Initialize variables outside of for loop
+        char timeStr[9]; // "HH:MM:SS"
+        int charWidth = 6;
+        int charHeight = 8;
+        int textHeight = charHeight;
+        int textWidth;
+        int xPos, yPos;
+
+
         // Draw four centered lines
         for (int i = 0; i < 4; i++) {
-            int yPos = lineY[i];
+
+            // Format time string
+             snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d",
+                 now[i].hour(), now[i].minute(), now[i].second());
+
+            textWidth = strlen(timeStr) * charWidth;
+            xPos = (SCREEN_WIDTH - textWidth) / 2; // Center horizontally    
+            yPos = lineY[i];
 
             // If this line is the cursor position, draw rectangle
             if (cursorPos == (i)) {

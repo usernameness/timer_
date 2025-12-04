@@ -19,6 +19,12 @@ class control;
 class display {
 public:
 
+    enum Event : uint32_t {
+        ENCODER_MOVE = 1,
+        SELECTION = 2,
+        UNSELECTION = 3
+    };
+
     void init(encoder &encoderRef, control &controlRef);
 
     static TaskHandle_t displayTaskHandle;
