@@ -3,6 +3,7 @@
 #include "../include/encoder.hpp"
 #include "../include/buzzer.hpp"
 #include "../include/display.hpp"
+#include "esp_sleep.h"
 
 //------------------------------------------------------------------------------------------------
 //Initialization of static members
@@ -13,6 +14,7 @@ TaskHandle_t control::controlTaskHandle = nullptr;
 encoder* control::encoderRef_ = nullptr;
 RTC* control::clockRef_ = nullptr;
 DateTime control::prevNow_ = DateTime();
+DateTime control::inaticveTime_ = DateTime();
 
 //------------------------------------------------------------------------------------------------
 void control::init(encoder &encoderRef, RTC &clockRef) {
@@ -26,6 +28,8 @@ void control::init(encoder &encoderRef, RTC &clockRef) {
         // Handle mutex creation failure
         for(;;); // Halt if mutex not created
     }
+
+    inaticveTime_ = clockRef_->now();
 
     xTaskCreate(control::execute, "Control Task", 2048, NULL, 1, &controlTaskHandle);
 
@@ -54,16 +58,16 @@ void control::execute(void *pvParameters) {
             encoderPosAtSelect = rotaryPos;
             cursorPosAtSelction = cursorPos;
             selected = true;
-            alarmsBlocked_[cursorPos] = false;
             xTaskNotify(display::displayTaskHandle, display::SELECTION, eSetValueWithOverwrite);
             GPIO.out_w1tc.val = (1 << 8);
-
         } else if (buttonPressed && selected) {
             selected = false;
             xTaskNotify(display::displayTaskHandle, display::UNSELECTION, eSetValueWithOverwrite);
             GPIO.out_w1ts.val = (1 << 8);
 
         }
+
+        DateTime currentTime = clockRef_->now();
 
         if (selected) {
             // Adjust the selected timer based on encoder movement
@@ -78,60 +82,113 @@ void control::execute(void *pvParameters) {
             encoderPosAtSelect = rotaryPos; // Update for next iteration
         }
 
-        //timer decrements
-        DateTime currentTime = clockRef_->now();
+       
 
         if (currentTime != prevNow_) {
             xSemaphoreTake(mutex_, portMAX_DELAY);
             //If the current time has advanced, decrement timers that are not selected
+            
+            for (int i = 0; i < 4; ++i) {
+                if (timers_[i] <= currentTime) {
+                    timers_[i] = currentTime; // Prevent underflow
+                } else {
+                    timers_[i] = ((i == cursorPos) && selected) ? timers_[i] + TimeSpan(1) : timers_[i]; //- TimeSpan(0, 0, 0, 1);
+                }
+            }
 
-            //TO DO ADD IF STATEMENT TO PREVENT UNDERFLOW
-
-            timers_[0] = ((cursorPos == 0)&&(selected)) ? timers_[0]  : timers_[0] - TimeSpan(0, 0, 0, 1);
-            timers_[1] = ((cursorPos == 1)&&(selected)) ? timers_[1]  : timers_[1] - TimeSpan(0, 0, 0, 1);
-            timers_[2] = ((cursorPos == 2)&&(selected)) ? timers_[2]  : timers_[2] - TimeSpan(0, 0, 0, 1);
-            timers_[3] = ((cursorPos == 3)&&(selected)) ? timers_[3]  : timers_[3] - TimeSpan(0, 0, 0, 1);
             xSemaphoreGive(mutex_);
         }
 
         prevNow_ = currentTime;
 
-        //if any timer reached zero and alarm not blocked, trigger alarm
-        bool alarmTriggered = false;
-        alarmTriggered = (timers_[0] <= currentTime) && !alarmsBlocked_[0];
-        alarmTriggered = alarmTriggered || ((timers_[1] <= currentTime) && !alarmsBlocked_[1]);
-        alarmTriggered = alarmTriggered || ((timers_[2] <= currentTime) && !alarmsBlocked_[2]);
-        alarmTriggered = alarmTriggered || ((timers_[3] <= currentTime) && !alarmsBlocked_[3]);
+
+        std::array<bool,4> alarmTriggered = {false, false, false, false};
+
+        for (int i = 0; i < 4; ++i) {
+
+            //unblock alarm if timer is set to future time else keep current state
+            alarmsBlocked_[i] = (timers_[i] > currentTime) ? false : alarmsBlocked_[i];
+
+            //check if alarm should trigger
+            alarmTriggered[i] = (timers_[i] <= currentTime) && !alarmsBlocked_[i];
+        }
         
 
-        if (alarmTriggered) {
+        for (int i = 0; i < 4; ++i) {
+            if (alarmTriggered[i]) {
             //block selector
             selectorBlocked = true;
 
             // Notify buzzer to start alarm
             if (buzzer::buzzerTaskHandle != nullptr) {
-                xTaskNotify(buzzer::buzzerTaskHandle,buzzer::ALARM_START,eSetValueWithOverwrite);
+                xTaskNotify(buzzer::buzzerTaskHandle, buzzer::ALARM_START, eSetValueWithOverwrite);
+            }
             }
         }
 
-        if (buttonPressed && alarmTriggered) {
-            // Unblock selector
-            selectorBlocked = false;
+        for (int i = 0; i < 4; ++i) {
+            if (buttonPressed && alarmTriggered[i]) {
+                // Unblock selector
+                selectorBlocked = false;
 
-            alarmsBlocked_[0] = true;
-            alarmsBlocked_[1] = true;
-            alarmsBlocked_[2] = true;
-            alarmsBlocked_[3] = true;
+                alarmsBlocked_[i] = true;
 
-            // Notify buzzer to stop alarm
-            if (buzzer::buzzerTaskHandle != nullptr) {
-                xTaskNotify(buzzer::buzzerTaskHandle,buzzer::ALARM_STOP,eSetValueWithOverwrite);
+                // Notify buzzer to stop alarm
+                if (buzzer::buzzerTaskHandle != nullptr) {
+                    xTaskNotify(buzzer::buzzerTaskHandle,buzzer::ALARM_STOP,eSetValueWithOverwrite);
+                }
             }
         }
 
 
-        
-        //alarms
+        //If no alarms are active for long time, go into low power mode
+
+
+        bool timersInactive = false;
+        for (int i = 0; i < 4; ++i) {
+
+            //if any timer is active, break
+            // dont set inactive time if all timers are inactive
+            if (timers_[i] <= currentTime && alarmsBlocked_[i]) {
+                timersInactive = true;
+            } else {
+                timersInactive = false;
+                inaticveTime_ = currentTime;
+                break;
+            }
+        }
+
+        if (timersInactive) {
+            //No alarms active
+            //Check inactivity
+            if (inaticveTime_.isValid()) {
+                //Already tracking inactivity
+                TimeSpan inactiveDuration = currentTime - inaticveTime_;
+                if (inactiveDuration.totalseconds() >= 30) {
+                    // Inactivity for 5 minutes, enter low power mode
+                    display::turnDisplayOff();
+                    // Bit mask for GPIO9
+                    uint64_t mask = 1ULL << ENC_SW;
+
+                    // Wake on falling edge (button press)
+                    esp_deep_sleep_enable_gpio_wakeup(mask, ESP_GPIO_WAKEUP_GPIO_LOW);
+
+                    esp_deep_sleep_start();
+                }
+            }
+        } else {
+            //Reset inactivity timer
+            inaticveTime_ = currentTime;
+        }
+
+        //Turn debug LED off
+        //Turn display off
+        //put CPU to deep sleep, wake on encoder interrupt
+
+
+
+
+
         delay(100); // Control loop delay
     }
     
@@ -140,11 +197,17 @@ void control::execute(void *pvParameters) {
 }
 
 //------------------------------------------------------------------------------------------------
-auto control::get_timers() -> std::array<DateTime, 4> {
-    std::array<DateTime, 4> copy;
+auto control::get_timers() -> std::array<TimeSpan, 4> {
+    std::array<TimeSpan, 4> copy;
 
     xSemaphoreTake(mutex_, portMAX_DELAY);
-    copy = timers_;   // make a snapshot while locked
+    for (int i = 0; i < 4; ++i) {
+        //Use TimeSpan difference to get remaining time
+        // using previous time as it is safe against time
+        // increasing betweeen executions cause display errors
+        copy[i] = timers_[i] - prevNow_;
+        //copy[i] = (copy[i].totalseconds() < 0) ? TimeSpan(0) : copy[i];
+    }
     xSemaphoreGive(mutex_);
 
     return copy; // return by value (safe copy)

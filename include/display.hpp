@@ -27,6 +27,9 @@ public:
 
     void init(encoder &encoderRef, control &controlRef);
 
+    static void turnDisplayOff();
+    static void turnDisplayOn();
+
     static TaskHandle_t displayTaskHandle;
 
 private:

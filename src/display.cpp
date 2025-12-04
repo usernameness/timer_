@@ -20,6 +20,8 @@ void display::init(encoder &encoderRef, control &controlRef) {
         for(;;); // Halt if deiplay not found
     }
 
+    display_.ssd1306_command(SSD1306_DISPLAYON); // Turn on the display
+
     display_.clearDisplay();
     display_.clearDisplay();
     display_.setTextSize(1);
@@ -42,7 +44,7 @@ void display::execute(void *pvParameters) {
 
         xTaskNotifyWait(0, UINT32_MAX, &notificationValue, pdMS_TO_TICKS(50));
 
-        std::array<DateTime,4> now = controlRef_->get_timers(); // For now, just show the first timer
+        std::array<TimeSpan,4> now = controlRef_->get_timers(); // For now, just show the first timer
         int cursorPos = encoderRef_->get_cursor_position();
 
         if(notificationValue == ENCODER_MOVE) {
@@ -85,7 +87,7 @@ void display::execute(void *pvParameters) {
 
             // Format time string
              snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d",
-                 now[i].hour(), now[i].minute(), now[i].second());
+                 now[i].hours(), now[i].minutes(), now[i].seconds());
 
             textWidth = strlen(timeStr) * charWidth;
             xPos = (SCREEN_WIDTH - textWidth) / 2; // Center horizontally    
@@ -103,6 +105,17 @@ void display::execute(void *pvParameters) {
         display_.display();
 
     }
+}
+
+//------------------------------------------------------------------------------------------------
+void display::turnDisplayOff() {
+    display_.clearDisplay();
+    display_.display();
+    display_.ssd1306_command(SSD1306_DISPLAYOFF);
+}
+
+void display::turnDisplayOn() {
+    display_.ssd1306_command(SSD1306_DISPLAYON);
 }
 
 //------------------------------------------------------------------------------------------------

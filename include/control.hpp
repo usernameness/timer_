@@ -9,13 +9,14 @@
 // Forward declare encoder to avoid circular include
 class encoder;
 
+#define ENC_SW  4
 
 class control {
 public:
 
     void init(encoder& encoderRef, RTC& clockRef);
 
-    auto get_timers() -> std::array<DateTime, 4>;
+    auto get_timers() -> std::array<TimeSpan, 4>;
 
     static TaskHandle_t controlTaskHandle;
 
@@ -24,6 +25,8 @@ private:
     static void execute(void *pvParameters);
 
     static DateTime prevNow_;
+
+    static DateTime inaticveTime_;
 
     static std::array<DateTime, 4> timers_;
     static std::array<bool, 4> alarmsBlocked_;

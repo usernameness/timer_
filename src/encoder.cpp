@@ -137,7 +137,7 @@ void IRAM_ATTR encoder::handleSwitch() {
     static uint32_t lastPressTick = 0;
     uint32_t nowTick = xTaskGetTickCountFromISR();
 
-    if ((nowTick - lastPressTick) < pdMS_TO_TICKS(30)) {
+    if ((nowTick - lastPressTick) < pdMS_TO_TICKS(50)) {
         return;
     }
     lastPressTick = nowTick;
