@@ -5,6 +5,7 @@ DateTime RTC::now_ = DateTime();
 SemaphoreHandle_t RTC::mutex_ = nullptr;
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
+//------------------------------------------------------------------------------------------------
 void RTC::init() {
 
     mutex_ = xSemaphoreCreateMutex();
@@ -34,6 +35,7 @@ void RTC::init() {
     xSemaphoreGive(mutex_);
 }
 
+//------------------------------------------------------------------------------------------------
 void RTC::execute(void *pvParameters) {
     for(;;){
         DateTime t = rtc.now();
@@ -44,6 +46,7 @@ void RTC::execute(void *pvParameters) {
     }
 }
 
+//------------------------------------------------------------------------------------------------
 auto RTC::now() -> const DateTime {
     DateTime copy;
     xSemaphoreTake(mutex_, portMAX_DELAY);
@@ -52,6 +55,7 @@ auto RTC::now() -> const DateTime {
     return copy;
 }
 
+//------------------------------------------------------------------------------------------------
 void RTC::reset() {
     // Reset clock if needed
 }

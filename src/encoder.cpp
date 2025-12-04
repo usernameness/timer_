@@ -1,3 +1,6 @@
+// Include the concrete headers this translation unit needs
+#include "../include/buzzer.hpp"
+#include "../include/display.hpp"
 #include "../include/encoder.hpp"
 #include "../include/buzzer.hpp"
 
@@ -12,6 +15,7 @@ SemaphoreHandle_t encoder::mutex_ = nullptr;
 // Spinlock for ISR protection
 portMUX_TYPE encoder::mux_ = portMUX_INITIALIZER_UNLOCKED;
 
+//------------------------------------------------------------------------------------------------
 void encoder::init(TaskHandle_t buzzerHandle, TaskHandle_t displayHandle) {
 
     buzzerTaskHandle = buzzerHandle;
@@ -32,10 +36,12 @@ void encoder::init(TaskHandle_t buzzerHandle, TaskHandle_t displayHandle) {
     attachInterrupt(digitalPinToInterrupt(ENC_SW), handleSwitch, FALLING);
 }
 
+//------------------------------------------------------------------------------------------------
 void encoder::execute() {
     // This function can be used to process encoder events if needed
 }
 
+//------------------------------------------------------------------------------------------------
 void encoder::reset() {
     xSemaphoreTake(mutex_, portMAX_DELAY);
     encoderPos = 0;
@@ -43,6 +49,7 @@ void encoder::reset() {
     xSemaphoreGive(mutex_);
 }
 
+//------------------------------------------------------------------------------------------------
 auto encoder::get_position() -> const int {
     int pos;
     xSemaphoreTake(mutex_, portMAX_DELAY);
@@ -51,6 +58,7 @@ auto encoder::get_position() -> const int {
     return pos;
 }
 
+//------------------------------------------------------------------------------------------------
 auto encoder::get_cursor_position() -> const int {
     int pos;
     xSemaphoreTake(mutex_, portMAX_DELAY);
@@ -59,6 +67,7 @@ auto encoder::get_cursor_position() -> const int {
     return pos % 4;
 }
 
+//------------------------------------------------------------------------------------------------
 auto encoder::is_switch_pressed() -> const bool {
     bool pressed;
     xSemaphoreTake(mutex_, portMAX_DELAY);
@@ -68,6 +77,7 @@ auto encoder::is_switch_pressed() -> const bool {
     return pressed;
 }
 
+//------------------------------------------------------------------------------------------------
 void IRAM_ATTR encoder::handleEncoder() {
 
 
@@ -125,6 +135,7 @@ void IRAM_ATTR encoder::handleEncoder() {
 
 }
 
+//------------------------------------------------------------------------------------------------
 void IRAM_ATTR encoder::handleSwitch() {
     static uint32_t lastPressTick = 0;
     uint32_t nowTick = xTaskGetTickCountFromISR();

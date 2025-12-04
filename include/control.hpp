@@ -4,9 +4,10 @@
 #include <cstdint>
 #include <functional>
 #include <RTClib.h>
-#include "../include/encoder.hpp"
 #include "../include/clock.hpp"
 
+// Forward declare encoder to avoid circular include
+class encoder;
 
 
 class control {

@@ -1,9 +1,12 @@
 #include "../include/control.hpp"
+#include "../include/encoder.hpp"
+#include "../include/buzzer.hpp"
+#include "../include/display.hpp"
 
-std::array<DateTime, 4> control::timers_ = {
-    DateTime(), DateTime(), DateTime(), DateTime()
-};
-
+//------------------------------------------------------------------------------------------------
+//Initialization of static members
+std::array<DateTime, 4> control::timers_ = { DateTime(), DateTime(), DateTime(), DateTime()};
+std::array<bool, 4> control::alarmsBlocked_ = { true, true, true, true };
 SemaphoreHandle_t control::mutex_ = nullptr;
 
 TaskHandle_t control::controlTaskHandle = nullptr;
@@ -11,7 +14,7 @@ TaskHandle_t control::controlTaskHandle = nullptr;
 encoder* control::encoderRef_ = nullptr;
 RTC* control::clockRef_ = nullptr;
 
-
+//------------------------------------------------------------------------------------------------
 void control::init(encoder &encoderRef, RTC &clockRef) {
 
     encoderRef_ = &encoderRef;
@@ -29,6 +32,7 @@ void control::init(encoder &encoderRef, RTC &clockRef) {
     // Initialization code for control can be added here
 }
 
+//------------------------------------------------------------------------------------------------
 void control::execute(void *pvParameters) {
     for (;;)
     {
@@ -79,6 +83,7 @@ void control::execute(void *pvParameters) {
     
 }
 
+//------------------------------------------------------------------------------------------------
 auto control::get_timers() -> std::array<DateTime, 4> {
     std::array<DateTime, 4> copy;
 
@@ -89,6 +94,7 @@ auto control::get_timers() -> std::array<DateTime, 4> {
     return copy; // return by value (safe copy)
 }
 
+//------------------------------------------------------------------------------------------------
 void control::reset() {
     xSemaphoreTake(mutex_, portMAX_DELAY);
     for (auto &t : timers_) {

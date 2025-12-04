@@ -4,9 +4,10 @@
 #include <cstdint>
 #include <functional>
 #include <Adafruit_SSD1306.h>
-#include "../include/encoder.hpp"
-#include "../include/clock.hpp"
-#include "../include/control.hpp"
+
+// Forward declarations to avoid circular includes
+class encoder;
+class control;
 
 
 // OLED Display Defines

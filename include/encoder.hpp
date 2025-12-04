@@ -4,6 +4,10 @@
 #include <cstdint>
 #include <functional>
 
+// Forward declarations to avoid circular includes
+class buzzer; // not used directly in this header
+class display; // not used directly in this header
+
 #define ENC_CLK   9
 #define ENC_DT   10
 #define ENC_SW  4

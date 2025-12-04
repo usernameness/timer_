@@ -1,10 +1,13 @@
 #include "../include/display.hpp"
+#include "../include/encoder.hpp"
+#include "../include/control.hpp"
 
 Adafruit_SSD1306 display::display_(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 encoder* display::encoderRef_ = nullptr;
 control* display::controlRef_ = nullptr;
 TaskHandle_t display::displayTaskHandle = nullptr;
 
+//------------------------------------------------------------------------------------------------
 void display::init(encoder &encoderRef, control &controlRef) {
     encoderRef_ = &encoderRef;
     controlRef_ = &controlRef;
@@ -27,6 +30,7 @@ void display::init(encoder &encoderRef, control &controlRef) {
     xTaskCreate(display::execute, "Display Task", 2048, NULL, 1, &displayTaskHandle);
 }
 
+//------------------------------------------------------------------------------------------------
 void display::execute(void *pvParameters) {
     for (;;) {
 
@@ -74,6 +78,7 @@ void display::execute(void *pvParameters) {
     }
 }
 
+//------------------------------------------------------------------------------------------------
 void display::reset() {
     // Reset display state if needed
 }
